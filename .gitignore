@@ -1,0 +1,23 @@
+# Игнорировать папку venv
+venv/
+.venv/
+
+# Игнорировать файлы Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Игнорировать файлы IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Игнорировать логи
+*.log
