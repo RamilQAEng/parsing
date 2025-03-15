@@ -1,0 +1,6 @@
+2025-03-15 18:33:07,295 - ERROR - Request error: HTTPSConnectionPool(host='web-data-extractor.net', port=443): Read timed out. (read timeout=15)
+2025-03-15 18:33:45,655 - WARNING - Elements not found: H3 (h3)
+2025-03-15 18:48:04,977 - WARNING - Elements not found: H3 (h3)
+2025-03-15 18:59:46,889 - WARNING - Elements not found: H3 (h3)
+2025-03-15 19:01:46,632 - ERROR - No data to save. Check the target URL and selectors.
+2025-03-15 19:04:07,922 - WARNING - Elements not found: H3 (h3)
