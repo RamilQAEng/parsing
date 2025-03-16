@@ -2,6 +2,12 @@ fields:
   H1: h1
   H2: h2
   H3: h3
-  MainImage: img@src
-  Canonical: link[rel="canonical"]@href
-  MetaDescription: meta[name="description"]@content
+  MainImage:
+    selector: img
+    attr: src
+  Canonical:
+    selector: link[rel="canonical"]
+    attr: href
+  MetaDescription:
+    selector: meta[name="description"]
+    attr: content

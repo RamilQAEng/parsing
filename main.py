@@ -1,10 +1,9 @@
-from venv import logger
 from gooey import Gooey, GooeyParser
-import pandas as pd
-from datetime import datetime
+from core.static_parser import StaticParser
+from core.dynamic_parser import DynamicParser
 from core.proxy_manager import ProxyManager
-from core.parser_engine import SEOParser
 from config_loader import load_config
+from datetime import datetime
 import os
 import csv
 import logging
@@ -19,34 +18,44 @@ logging.basicConfig(
     ]
 )
 
-@Gooey(program_name="SEO Parser Pro", default_size=(800, 600))
+@Gooey(program_name="Marketplace Parser", default_size=(800, 600))
 def main():
-    parser = GooeyParser()
+    parser = GooeyParser(description="Парсер для маркетплейсов")
+    
+    # Настройки GUI
+    parser.add_argument(
+        "--platform",
+        widget="Dropdown",
+        choices=["Ozon", "Wildberries", "seo"],
+        default="Ozon",
+        help="Выберите платформу для парсинга"
+    )
     
     parser.add_argument(
-        "--proxy_file", 
+        "--parser_type",
+        widget="Dropdown",
+        choices=["Статический", "Динамический"],
+        default="Динамический",
+        help="Тип парсера (для динамических сайтов требуется Chrome)"
+    )
+    
+    parser.add_argument(
+        "--proxy_file",
         widget="FileChooser",
-        help="Выберите файл с прокси (формат: ip:port)",
-        default="inputs/proxies.txt"
+        help="Файл с прокси (ip:port)",
+        default="configs/proxies.txt"
     )
     
     parser.add_argument(
         "--target_url",
         required=True,
-        help="URL сайта для парсинга (например, https://example.com)"
-    )
-    
-    parser.add_argument(
-        "--selectors_config",
-        widget="FileChooser",
-        help="Конфигурационный файл (JSON/YAML)",
-        default="configs/seo_config.yaml"
+        help="URL для парсинга (например, https://www.ozon.ru/product/123)"
     )
     
     args = parser.parse_args()
     
     # Загрузка конфигурации
-    config = load_config(args.selectors_config)
+    config = load_config(f"configs/{args.platform.lower()}_config.yaml")
     selectors = config.get('fields', {})
     
     # Инициализация прокси
@@ -54,37 +63,61 @@ def main():
     proxy_manager.validate_proxies()
     proxy = proxy_manager.get_random_proxy()
     
-    # Парсинг
-    seo_parser = SEOParser(args.target_url, selectors, proxy)
-    results = seo_parser.parse_seo()
+    # Выбор парсера
+    try:
+        if args.parser_type == "Статический":
+            parser = StaticParser(proxy=proxy)
+        else:
+            parser = DynamicParser(
+                proxy=proxy,
+                headless=False,
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            )
+            
+        results = parser.parse_page(args.target_url, selectors)
+        
+    except Exception as e:
+        logging.error(f"Ошибка парсинга: {str(e)}")
+        return
 
-    # Проверка наличия данных
-    if not results:
-            logger.error("No data to save. Check the target URL and selectors.")
-            return
+    # Очистка данных
+    cleaned_results = {}
+    for field, values in results.items():
+        if field == "price" or field == "old_price":
+            cleaned = [v.replace(" ", "").replace("₽", "").strip() for v in values]
+        else:
+            cleaned = values
+        cleaned_results[field] = cleaned
 
-    # Определяем максимальное количество строк
-    max_rows = max(len(v) for v in results.values()) if results else 0
+        # Проверка наличия данных
+    if not cleaned_results:
+        logging.error("Нет данных для записи в CSV.")
+        return
 
-    # Создаем список словарей для записи
-    csv_rows = []
+
+    # Нормализация данных для CSV
+    normalized = []
+    max_rows = max(len(v) if isinstance(v, list) else 1 for v in cleaned_results.values())
+
     for i in range(max_rows):
         row = {}
-        for key in results.keys():
-            row[key] = results[key][i] if i < len(results[key]) else ""
-        csv_rows.append(row)
+        for key, values in cleaned_results.items():
+            if isinstance(values, list):
+                row[key] = values[i] if i < len(values) else ""
+            else:
+                row[key] = values if i == 0 else ""
+        normalized.append(row)
 
-    # Сохранение результатов
+    # Запись файла
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = os.path.join("outputs", f"results_{timestamp}.csv")
+    output_file = os.path.join("outputs", f"{args.platform}_{timestamp}.csv")
     
-    # Запись в CSV
     with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.DictWriter(f, fieldnames=results.keys(), delimiter=';')
+        writer = csv.DictWriter(f, fieldnames=cleaned_results.keys(), delimiter=';')
         writer.writeheader()
-        writer.writerows(csv_rows)
+        writer.writerows(normalized)
     
-    print(f"Результаты сохранены в {output_file}")
+    logging.info(f"Данные сохранены в: {output_file}")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,7 @@
+fields:
+  product_name:
+    - "div.m0j_25.mj1_25.tile-root span.tsHeadline500Medium"  # Название товара
+  price:
+    - "div.m0j_25.mj1_25.tile-root span.c3025-a1.tsHeadline500Medium.c3025-b1.c3025-a6"  # Цена
+  product_link:
+    - "div.m0j_25.mj1_25.tile-root a[href^='/product/']@href"  # Ссылка на товар
